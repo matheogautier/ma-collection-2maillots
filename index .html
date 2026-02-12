@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ma Collection de Maillots</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS depuis cdnjs (plus fiable) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <style>
+        :root {
+            --primary: #1a2332;
+            --accent: #ff4757;
+            --cream: #f8f3e8;
+            --green: #2ecc71;
+            --blue: #3498db;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Crimson Pro', serif;
+            background: var(--cream);
+            color: #2d3436;
+        }
+
+        .header {
+            background: var(--primary);
+            color: var(--cream);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(3rem, 8vw, 6rem);
+            letter-spacing: 0.1em;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1.5rem 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .stat-number {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3rem;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            opacity: 0.7;
+            margin-top: 0.5rem;
+        }
+
+        .map-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .map-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            color: var(--primary);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Crimson Pro', serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary);
+        }
+
+        .btn-success {
+            background: var(--green);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .legend-dot.collected {
+            background: var(--green);
+        }
+
+        .legend-dot.wanted {
+            background: var(--accent);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 35, 50, 0.95);
+            z-index: 10000;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--cream);
+            border-radius: 16px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .modal-image-container {
+            width: 100%;
+            height: 250px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px 16px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: white;
+            opacity: 0.5;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .modal-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.7;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Crimson Pro', serif;
+            font-size: 1rem;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        textarea.form-input {
+            min-height: 100px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid var(--accent);
+        }
+
+        .info-label {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .status-collected {
+            background: var(--green);
+            color: white;
+        }
+
+        .status-wanted {
+            background: var(--accent);
+            color: white;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .custom-marker {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            position: relative;
+        }
+
+        .marker-collected {
+            background: var(--green);
+        }
+
+        .marker-wanted {
+            background: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Ma Collection</h1>
+        <p class="subtitle">Un maillot de chaque première ligue mondiale</p>
+    </div>
+
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalCollected">0</div>
+                <div class="stat-label">Maillots possédés</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalWanted">0</div>
+                <div class="stat-label">À acquérir</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCountries">0</div>
+                <div class="stat-label">Pays représentés</div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div class="map-header">
+                <h2 class="map-title">Carte Mondiale</h2>
+                <button class="btn btn-primary" onclick="openAddModal()">
+                    ➕ Ajouter un maillot
+                </button>
+            </div>
+            <div id="map"></div>
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-dot collected"></span>
+                    <span>Possédé</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot wanted"></span>
+                    <span>À acquérir</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div class="modal-image-container">⚽</div>
+            <div class="modal-body">
+                <h2 class="modal-title" id="modalTitle">Ajouter un maillot</h2>
+                
+                <form id="jerseyForm" onsubmit="saveJersey(event)">
+                    <div class="form-group">
+                        <label class="form-label">Pays *</label>
+                        <input type="text" class="form-input" id="inputCountry" required placeholder="Ex: France">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ville *</label>
+                        <input type="text" class="form-input" id="inputCity" required placeholder="Ex: Paris">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ligue *</label>
+                        <input type="text" class="form-input" id="inputLeague" required placeholder="Ex: Ligue 1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Équipe *</label>
+                        <input type="text" class="form-input" id="inputTeam" required placeholder="Ex: Paris Saint-Germain">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Saison *</label>
+                        <input type="text" class="form-input" id="inputSeason" required placeholder="Ex: 2023-24">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-input" id="inputDescription" placeholder="Détails..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Statut *</label>
+                        <select class="form-select" id="inputStatus" required>
+                            <option value="collected">✓ Possédé</option>
+                            <option value="wanted">○ À acquérir</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">💾 Enregistrer</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">Annuler</button>
+                    </div>
+                </form>
+
+                <div id="editActions" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #ddd;">
+                    <button class="btn btn-danger" onclick="deleteJersey()" style="width: 100%;">🗑️ Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS depuis cdnjs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <script>
+        const cityCoords = {
+            'paris': [48.8566, 2.3522], 'marseille': [43.2965, 5.3698], 'lyon': [45.7640, 4.8357],
+            'londres': [51.5074, -0.1278], 'london': [51.5074, -0.1278], 'manchester': [53.4808, -2.2426],
+            'liverpool': [53.4084, -2.9916], 'madrid': [40.4168, -3.7038], 'barcelone': [41.3851, 2.1734],
+            'milan': [45.4642, 9.1900], 'rome': [41.9028, 12.4964], 'turin': [45.0703, 7.6869],
+            'munich': [48.1351, 11.5820], 'berlin': [52.5200, 13.4050], 'dortmund': [51.5136, 7.4653],
+            'lisbonne': [38.7223, -9.1393], 'porto': [41.1579, -8.6291],
+            'amsterdam': [52.3676, 4.9041], 'bruxelles': [50.8503, 4.3517]
+        };
+
+        let jerseys = [], map, markers = [], currentJerseyId = null;
+
+        function getCityCoords(city) {
+            const key = city.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            return cityCoords[key] || [48.8566, 2.3522];
+        }
+
+        function loadJerseys() {
+            const saved = localStorage.getItem('footballJerseys3');
+            jerseys = saved ? JSON.parse(saved) : [
+                {id: 1, country: 'France', city: 'Paris', league: 'Ligue 1', team: 'PSG', season: '2023-24', description: 'Domicile', status: 'collected'},
+                {id: 2, country: 'Angleterre', city: 'Manchester', league: 'Premier League', team: 'Man United', season: '2023-24', description: 'Rouge', status: 'collected'}
+            ];
+            if (!saved) saveToLocalStorage();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('footballJerseys3', JSON.stringify(jerseys));
+        }
+
+        function initMap() {
+            loadJerseys();
+            
+            map = L.map('map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap',
+                maxZoom: 18
+            }).addTo(map);
+
+            updateMap();
+            updateStats();
+        }
+
+        function createIcon(status, count) {
+            const color = status === 'collected' ? '#2ecc71' : '#ff4757';
+            const badge = count > 1 ? `<span style="position: absolute; top: -8px; right: -8px; background: white; color: #1a2332; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">${count}</span>` : '';
+            return L.divIcon({
+                className: 'custom-icon',
+                html: `<div class="custom-marker marker-${status}">${badge}⚽</div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+        }
+
+        function updateMap() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            const grouped = {};
+            jerseys.forEach(j => {
+                const coords = getCityCoords(j.city);
+                j.lat = coords[0];
+                j.lng = coords[1];
+                const key = `${j.lat.toFixed(2)},${j.lng.toFixed(2)}`;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(j);
+            });
+
+            Object.values(grouped).forEach(group => {
+                const first = group[0];
+                const hasCollected = group.some(j => j.status === 'collected');
+                const status = hasCollected ? 'collected' : 'wanted';
+                
+                const marker = L.marker([first.lat, first.lng], {
+                    icon: createIcon(status, group.length)
+                }).addTo(map);
+
+                let popup = `<div style="font-family: Crimson Pro, serif; max-width: 200px;">`;
+                if (group.length === 1) {
+                    popup += `<strong style="font-size: 1.1em;">${first.city}</strong><br><span style="color: #ff4757;">${first.team}</span>`;
+                } else {
+                    popup += `<strong>${first.city}</strong><br><span style="color: #ff4757;">${group.length} maillots</span><hr style="margin: 8px 0;">`;
+                    group.forEach(j => {
+                        const icon = j.status === 'collected' ? '✓' : '○';
+                        popup += `<div style="padding: 4px; cursor: pointer;" onclick="editJersey(${j.id})">${icon} ${j.team} (${j.season})</div>`;
+                    });
+                }
+                popup += '</div>';
+
+                marker.bindPopup(popup);
+                marker.on('click', () => {
+                    if (group.length === 1) editJersey(first.id);
+                });
+
+                markers.push(marker);
+            });
+        }
+
+        function updateStats() {
+            const collected = jerseys.filter(j => j.status === 'collected').length;
+            const wanted = jerseys.filter(j => j.status === 'wanted').length;
+            document.getElementById('totalCollected').textContent = collected;
+            document.getElementById('totalWanted').textContent = wanted;
+            document.getElementById('totalCountries').textContent = jerseys.length;
+        }
+
+        function openAddModal() {
+            currentJerseyId = null;
+            document.getElementById('modalTitle').textContent = 'Ajouter un maillot';
+            document.getElementById('jerseyForm').reset();
+            document.getElementById('editActions').style.display = 'none';
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function editJersey(id) {
+            const jersey = jerseys.find(j => j.id === id);
+            if (!jersey) return;
+
+            currentJerseyId = id;
+            document.getElementById('modalTitle').textContent = 'Modifier le maillot';
+            document.getElementById('inputCountry').value = jersey.country;
+            document.getElementById('inputCity').value = jersey.city;
+            document.getElementById('inputLeague').value = jersey.league;
+            document.getElementById('inputTeam').value = jersey.team;
+            document.getElementById('inputSeason').value = jersey.season;
+            document.getElementById('inputDescription').value = jersey.description || '';
+            document.getElementById('inputStatus').value = jersey.status;
+            document.getElementById('editActions').style.display = 'block';
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function saveJersey(e) {
+            e.preventDefault();
+
+            const data = {
+                country: document.getElementById('inputCountry').value,
+                city: document.getElementById('inputCity').value,
+                league: document.getElementById('inputLeague').value,
+                team: document.getElementById('inputTeam').value,
+                season: document.getElementById('inputSeason').value,
+                description: document.getElementById('inputDescription').value,
+                status: document.getElementById('inputStatus').value
+            };
+
+            if (currentJerseyId) {
+                const jersey = jerseys.find(j => j.id === currentJerseyId);
+                Object.assign(jersey, data);
+            } else {
+                jerseys.push({id: Date.now(), ...data});
+            }
+
+            saveToLocalStorage();
+            updateMap();
+            updateStats();
+            closeModal();
+        }
+
+        function deleteJersey() {
+            if (confirm('Supprimer ce maillot ?')) {
+                jerseys = jerseys.filter(j => j.id !== currentJerseyId);
+                saveToLocalStorage();
+                updateMap();
+                updateStats();
+                closeModal();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+
+        document.getElementById('editModal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
